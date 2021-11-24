@@ -39,9 +39,11 @@ class accesoSql {
                 $ip=$partesIPPuerto[0];
                 $port=$partesIPPuerto[1];
                 $salida.=$this->anyadirBaseDispositivo($ip);
-                $salida.=$this->anyadirApp($ip,$atr);
+                $salida.=$this->anyadirApp($ip,$port);
                 //Obtenemos el ID de la app añadida/modificada en el anyadirApp()
                 $idApp = $this->sql("SELECT * FROM app WHERE IP = '".$ip."' AND Port = '".$port."'");
+                $salida.="check1";
+                $salida.=$idApp[0]["IP"]." ".$idApp[0]["Port"];
                 $salida.=$this->anyadirAppUPnP($idApp[0]["ID"],$atr);
 
                 //Obtenemos el ID de la app añadida/modificada en el anyadirAppUPnP()
@@ -279,5 +281,89 @@ class accesoSql {
     //Anyade el dispositivo que recibe a la base de datos
     function crearDispositivo($ip){
         $res=$this->sql("INSERT INTO dispositivo(IP) VALUES ('".$ip."')");
+    }
+
+
+
+
+
+
+    function mostrarApps(){
+        $res=$this->sql("SELECT * FROM app");
+        $salida="<table><tr>
+                <th>Nº</th>
+                <th>IP</th>
+                <th>PORT</th>
+                <th>PROTOCOL</th>
+
+            </tr>";
+        $contador=1;
+        foreach($res as $value){
+            $salida.="<tr><td><button onclick=dispositivo('".$value["ID"]."')>".$contador."</button></td>";
+            $salida.="<td>".$value["IP"]."</td><td>".$value["Port"]."</td>";
+            $resUPnP=$this->sql("SELECT * FROM app_UPnP WHERE ID_APP = '".$value["ID"]."'");
+            $resmDNS=$this->sql("SELECT * FROM app_mDNS WHERE ID_APP = '".$value["ID"]."'");
+            if($resUPnP){
+                $salida.="<td>UPnP</td>";
+            }else if($resmDNS){
+                $salida.="<td>mDNS</td>";
+            }
+            $salida.="</tr>";
+            $contador++;
+        }
+        $salida.="</table>";
+        return $salida;
+    }
+    function mostrarApp($ID){
+        $resUPnP=$this->sql("SELECT * FROM app_UPnP WHERE ID_APP= '".$ID."'");
+        $resmDNS=$this->sql("SELECT * FROM app_mDNS WHERE ID_APP= '".$ID."'");
+        $salida="";
+        if($resUPnP){
+            $resApp=$this->sql("SELECT * FROM service_UPnP WHERE ID_APP= '".$resUPnP[0]["ID"]."'");
+            $salida.="<h1>Service UPnP:</h1>
+                <table><tr>
+                <th>Name</th>
+                <th>ID_Name</th>
+                <th>SCPD</th>
+                <th>ControlUrl</th>
+                <th>EventUrl</th>
+                <th>BaseUrl</th>
+            </tr>";
+            foreach($resApp as $key => $value){
+                $salida.="<tr>
+                <th>".$value["Name"]."</th>
+                <th>".$value["ID_Name"]."</th>
+                <th>".$value["SCPD"]."</th>
+                <th>".$value["ControlUrl"]."</th>
+                <th>".$value["EventUrl"]."</th>
+                <th>".$value["BaseUrl"]."</th>
+            </tr>";
+            }
+            $salida.="</table>";
+        }else if($resmDNS) {
+            $resApp = $this->sql("SELECT * FROM service_mDNS WHERE ID_APP_mDNS= '" . $resmDNS[0]["ID"] . "'");
+            $salida .= "<h1>Service mDNS:</h1>
+                <table><tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Weight</th>
+                <th>Priority</th>
+                <th>Server</th>
+                <th>InterfaceIndex</th>
+            </tr>";
+            foreach ($resApp as $key => $value) {
+
+                $salida .= "<tr>
+                <th>" . $value["Name"] . "</th>
+                <th>" . $value["Type"] . "</th>
+                <th>" . $value["Weight"] . "</th>
+                <th>" . $value["Priority"] . "</th>
+                <th>" . $value["Server"] . "</th>
+                <th>" . $value["InterfaceIndex"] . "</th>
+            </tr>";
+            }
+            $salida .= "</table>";
+        }
+        return $salida;
     }
 }
