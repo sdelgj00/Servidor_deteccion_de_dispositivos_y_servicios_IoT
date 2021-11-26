@@ -1,6 +1,5 @@
 function dispositivo(idApp){
     let div= document.getElementById("divTabla");
-    //console.log("hola");
     var xmlhttp = new XMLHttpRequest();
     xmlhttp.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {

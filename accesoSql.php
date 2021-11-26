@@ -2,6 +2,15 @@
 require("constantes.php");
 class accesoSql {
     private $conexion;
+    
+    private function compVacio($vac){
+        $xtra=strval($vac);
+        if($xtra==''){
+            return 0;
+        }else{
+            return $vac;
+        }
+    }
 
     private function sql($sql) {
 
@@ -91,14 +100,20 @@ class accesoSql {
             $res=$this->sql("SELECT * FROM service_mDNS WHERE ID_APP_MDNS = '".$idAppmDNS."' AND Name= '".$serviceName."'");
             if(count($res)>0){
                 $salida.="SERVICIO mDNS".$serviceName." ya añadido\n";
-                $res2=$this->sql("UPDATE service_mDNS SET Type = '".$serviceAtr["type"]."', Weight = '".$serviceAtr["weight"]."',
-                Priority = '".$serviceAtr["priority"]."', Server = '".$serviceAtr["server"]."', InterfaceIndex = '".$serviceAtr["interface_index"]."'
-                WHERE ID_APP_MDNS = '".$idAppmDNS."' AND Name= '".$serviceName."', ");
+                $consulta2="UPDATE service_mDNS SET Type = '".$serviceAtr["type"]."', Weight = '".$this->compVacio($serviceAtr["weight"])."',
+                Priority = '".$this->compVacio($serviceAtr["priority"])."', Server = '".$serviceAtr["server"]."', InterfaceIndex = '".$this->compVacio($serviceAtr["interface_index"])."'
+                WHERE ID_APP_MDNS = '".$idAppmDNS."' AND Name= '".$serviceName."'";
+                $salida.=$consulta2;
+                $res2=$this->sql($consulta2);
+                $salida.=$this->compVacio($serviceAtr["interface_index"]);
             }else{
                 $salida.= "SERVICIO mDNS".$serviceName." no añadido\n";
-                $res2=$this->sql("INSERT INTO service_mDNS (ID_APP_MDNS, Name, Type, Weight, Priority, Server, InterfaceIndex) values
-                (".$idAppmDNS.",'".$serviceName."','".$serviceAtr["type"]."','".$serviceAtr["weight"]."','".$serviceAtr["priority"]."',
-                '".$serviceAtr["server"]."','".$serviceAtr["interface_index"]."')");
+                $consulta2="INSERT INTO service_mDNS (ID_APP_MDNS, Name, Type, Weight, Priority, Server, InterfaceIndex) values
+                (".$idAppmDNS.",'".$serviceName."','".$serviceAtr["type"]."','".$this->compVacio($serviceAtr["weight"])."','".$this->compVacio($serviceAtr["priority"])."',
+                '".$serviceAtr["server"]."','".$this->compVacio($serviceAtr["interface_index"])."')";
+                $salida.=$consulta2;
+                $salida.=$this->compVacio($serviceAtr["interface_index"]);
+                $res2=$this->sql($consulta2);
 
             }
             $idServicio=$this->sql("SELECT * FROM service_mDNS WHERE ID_APP_MDNS = '".$idAppmDNS."' AND Name= '".$serviceName."'");
@@ -135,14 +150,14 @@ class accesoSql {
                 bmv2accessComplexity,bmv2authentication,bmv2confidentialityImpact,bmv2integrityImpact,bmv2availabilityImpact,bmv2baseScore,
                 bmv3exploitabilityScore,bmv3impactScore,bmv3attackVector,bmv3attackComplexity,bmv3privilegesRequired,bmv3userInteraction,bmv3scope,bmv3confidentialImpact,
                 bmv3integrityImpact,bmv3availabilityImpact,bmv3baseScore,bmv3baseSeverity) values
-                ('".$idServicio."','".$vul["publishedDate"]."','".$vul["lastModifiedDate"]."','".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."',
-                '".$vul["cve"]["description"]["description_data"][0]["lang"]."','".$impactv2["severity"]."','".$impactv2["exploitabilityScore"]."',
-                '".$impactv2["impactScore"]."','".$impactv2["acInsufInfo"]."','".$impactv2["obtainAllPrivilege"]."','".$impactv2["obtainUserPrivilege"]."','".$impactv2["obtainOtherPrivilege"]."','".$impactv2["userInteractionRequired"]."',
+                ('".$idServicio."','".str_replace("Z","",str_replace("T",":",$vul["publishedDate"]))."','".str_replace("Z","",str_replace("T",":",$vul["lastModifiedDate"]))."','".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."',
+                '".$vul["cve"]["description"]["description_data"][0]["lang"]."','".$impactv2["severity"]."','".$this->compVacio($impactv2["exploitabilityScore"])."',
+                '".$this->compVacio($impactv2["impactScore"])."',b'".$impactv2["acInsufInfo"]."',b'".$impactv2["obtainAllPrivilege"]."',b'".$impactv2["obtainUserPrivilege"]."',b'".$impactv2["obtainOtherPrivilege"]."',b'".$impactv2["userInteractionRequired"]."',
                 '".$impactv2["cvssV2"]["accessVector"]."','".$impactv2["cvssV2"]["accessComplexity"]."','".$impactv2["cvssV2"]["authentication"]."','".$impactv2["cvssV2"]["confidentialityImpact"]."',
-                '".$impactv2["cvssV2"]["integrityImpact"]."','".$impactv2["cvssV2"]["availabilityImpact"]."','".$impactv2["cvssV2"]["baseScore"]."',
-                '".$impactv3["exploitabilityScore"]."','".$impactv3["impactScore"]."','".$impactv3["cvssV3"]["attackVector"]."','".$impactv3["cvssV3"]["attackComplexity"]."',
+                '".$impactv2["cvssV2"]["integrityImpact"]."','".$impactv2["cvssV2"]["availabilityImpact"]."','".$this->compVacio($impactv2["cvssV2"]["baseScore"])."',
+                '".$this->compVacio($impactv3["exploitabilityScore"])."','".$this->compVacio($impactv3["impactScore"])."','".$impactv3["cvssV3"]["attackVector"]."','".$impactv3["cvssV3"]["attackComplexity"]."',
                 '".$impactv3["cvssV3"]["privilegesRequired"]."','".$impactv3["cvssV3"]["userInteraction"]."','".$impactv3["cvssV3"]["scope"]."','".$impactv3["cvssV3"]["confidentialityImpact"]."',
-                '".$impactv3["cvssV3"]["integrityImpact"]."','".$impactv3["cvssV3"]["availabilityImpact"]."','".$impactv3["cvssV3"]["baseScore"]."','".$impactv3["cvssV3"]["baseSeverity"]."')";
+                '".$impactv3["cvssV3"]["integrityImpact"]."','".$impactv3["cvssV3"]["availabilityImpact"]."','".$this->compVacio($impactv3["cvssV3"]["baseScore"])."','".$impactv3["cvssV3"]["baseSeverity"]."')";
                 $res2=$this->sql($consulta);
                 $salida.=$res2."\n";
                 //este if es por si hay algún fallo en la consulta
@@ -212,14 +227,14 @@ class accesoSql {
                 bmv2accessComplexity,bmv2authentication,bmv2confidentialityImpact,bmv2integrityImpact,bmv2availabilityImpact,bmv2baseScore,
                 bmv3exploitabilityScore,bmv3impactScore,bmv3attackVector,bmv3attackComplexity,bmv3privilegesRequired,bmv3userInteraction,bmv3scope,bmv3confidentialImpact,
                 bmv3integrityImpact,bmv3availabilityImpact,bmv3baseScore,bmv3baseSeverity) values
-                ('".$idServicio."','".$vul["publishedDate"]."','".$vul["lastModifiedDate"]."','".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."',
-                '".$vul["cve"]["description"]["description_data"][0]["lang"]."','".$impactv2["severity"]."','".$impactv2["exploitabilityScore"]."',
-                '".$impactv2["impactScore"]."','".$impactv2["acInsufInfo"]."','".$impactv2["obtainAllPrivilege"]."','".$impactv2["obtainUserPrivilege"]."','".$impactv2["obtainOtherPrivilege"]."','".$impactv2["userInteractionRequired"]."',
+                ('".$idServicio."','".str_replace("Z","",str_replace("T",":",$vul["publishedDate"]))."','".str_replace("Z","",str_replace("T",":",$vul["lastModifiedDate"]))."','".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."',
+                '".$vul["cve"]["description"]["description_data"][0]["lang"]."','".$impactv2["severity"]."','".$this->compVacio($impactv2["exploitabilityScore"])."',
+                '".$this->compVacio($impactv2["impactScore"])."',b'".$impactv2["acInsufInfo"]."',b'".$impactv2["obtainAllPrivilege"]."',b'".$impactv2["obtainUserPrivilege"]."',b'".$impactv2["obtainOtherPrivilege"]."',b'".$impactv2["userInteractionRequired"]."',
                 '".$impactv2["cvssV2"]["accessVector"]."','".$impactv2["cvssV2"]["accessComplexity"]."','".$impactv2["cvssV2"]["authentication"]."','".$impactv2["cvssV2"]["confidentialityImpact"]."',
-                '".$impactv2["cvssV2"]["integrityImpact"]."','".$impactv2["cvssV2"]["availabilityImpact"]."','".$impactv2["cvssV2"]["baseScore"]."',
-                '".$impactv3["exploitabilityScore"]."','".$impactv3["impactScore"]."','".$impactv3["cvssV3"]["attackVector"]."','".$impactv3["cvssV3"]["attackComplexity"]."',
+                '".$impactv2["cvssV2"]["integrityImpact"]."','".$impactv2["cvssV2"]["availabilityImpact"]."','".$this->compVacio($impactv2["cvssV2"]["baseScore"])."',
+                '".$this->compVacio($impactv3["exploitabilityScore"])."','".$this->compVacio($impactv3["impactScore"])."','".$impactv3["cvssV3"]["attackVector"]."','".$impactv3["cvssV3"]["attackComplexity"]."',
                 '".$impactv3["cvssV3"]["privilegesRequired"]."','".$impactv3["cvssV3"]["userInteraction"]."','".$impactv3["cvssV3"]["scope"]."','".$impactv3["cvssV3"]["confidentialityImpact"]."',
-                '".$impactv3["cvssV3"]["integrityImpact"]."','".$impactv3["cvssV3"]["availabilityImpact"]."','".$impactv3["cvssV3"]["baseScore"]."','".$impactv3["cvssV3"]["baseSeverity"]."')";
+                '".$impactv3["cvssV3"]["integrityImpact"]."','".$impactv3["cvssV3"]["availabilityImpact"]."','".$this->compVacio($impactv3["cvssV3"]["baseScore"])."','".$impactv3["cvssV3"]["baseSeverity"]."')";
                 $res2=$this->sql($consulta);
                 $salida.=$res2."\n";
                 //este if es por si hay algún fallo en la consulta
@@ -282,8 +297,7 @@ class accesoSql {
     function crearDispositivo($ip){
         $res=$this->sql("INSERT INTO dispositivo(IP) VALUES ('".$ip."')");
     }
-
-
+    
 
 
 
@@ -331,12 +345,12 @@ class accesoSql {
             </tr>";
             foreach($resApp as $key => $value){
                 $salida.="<tr>
-                <th>".$value["Name"]."</th>
-                <th>".$value["ID_Name"]."</th>
-                <th>".$value["SCPD"]."</th>
-                <th>".$value["ControlUrl"]."</th>
-                <th>".$value["EventUrl"]."</th>
-                <th>".$value["BaseUrl"]."</th>
+                <td>".$value["Name"]."</td>
+                <td>".$value["ID_Name"]."</td>
+                <td>".$value["SCPD"]."</td>
+                <td>".$value["ControlUrl"]."</td>
+                <td>".$value["EventUrl"]."</td>
+                <td>".$value["BaseUrl"]."</td>
             </tr>";
             }
             $salida.="</table>";
@@ -354,12 +368,12 @@ class accesoSql {
             foreach ($resApp as $key => $value) {
 
                 $salida .= "<tr>
-                <th>" . $value["Name"] . "</th>
-                <th>" . $value["Type"] . "</th>
-                <th>" . $value["Weight"] . "</th>
-                <th>" . $value["Priority"] . "</th>
-                <th>" . $value["Server"] . "</th>
-                <th>" . $value["InterfaceIndex"] . "</th>
+                <td>" . $value["Name"] . "</td>
+                <td>" . $value["Type"] . "</td>
+                <td>" . $value["Weight"] . "</td>
+                <td>" . $value["Priority"] . "</td>
+                <td>" . $value["Server"] . "</td>
+                <td>" . $value["InterfaceIndex"] . "</td>
             </tr>";
             }
             $salida .= "</table>";

@@ -19,7 +19,6 @@ if($clave=="UPnP"||$clave=="mDNS"){
 }
 if($_GET["APP"]){
     $r=$AccesoSql->mostrarApp($_GET["APP"]);
-    echo $_GET["APP"];
     echo $r;
 }
 
