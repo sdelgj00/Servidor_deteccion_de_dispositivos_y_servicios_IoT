@@ -12,7 +12,7 @@ $clave=$jsonDecoded["Peticion"];
 $info=$jsonDecoded["info"];
 $AccesoSql=new accesoSql();
 
-if($clave=="UPnP"||$clave=="mDNS"){
+if($clave=="UPnP"||$clave=="mDNS"||$clave=="WS-Discovery"){
     echo "jsond: ".$jsonDecoded."\n\n";
     $r=$AccesoSql->anyadirBase($info);
 	echo $r;

@@ -79,6 +79,118 @@ class accesoSql {
                 $salida.=$this->anyadirServiciosmDNS($idAppmDNS[0]["ID"],$atr);
             }
         }
+        if($a["WS-Discovery"]){
+            $salida=$salida."hay WS-Discovery\n";
+            foreach ($a["WS-Discovery"] as $ipPuerto => $atr){
+                $partesIPPuerto=explode(":",$ipPuerto);
+                $ip=$partesIPPuerto[0];
+                $port=$partesIPPuerto[1];
+                $salida.=$this->anyadirBaseDispositivo($ip);
+                $salida.=$this->anyadirApp($ip,$port);
+                //Obtenemos el ID de la app añadida/modificada en el anyadirApp()
+                $idApp = $this->sql("SELECT * FROM app WHERE IP = '".$ip."' AND Port = '".$port."'");
+                $salida.=$this->anyadirAppWSDiscovery($idApp[0]["ID"],$atr);
+
+                //Obtenemos el ID de la app añadida/modificada en el anyadirAppUPnP()
+                $idAppWSDiscovery = $this->sql("SELECT * FROM app_WSDiscovery WHERE ID_APP = '".$idApp[0]["ID"]."'");
+                $salida.=$this->anyadirServiciosWSDiscovery($idAppWSDiscovery[0]["ID"],$atr);
+            }
+        }
+        return $salida;
+    }
+
+    function anyadirAppWSDiscovery($idApp, $atr){
+        $salida="";
+        $res=$this->sql("SELECT * FROM app_WSDiscovery WHERE ID_APP = '".$idApp."' ");
+        if(count($res)>0){
+            $salida.="existe WSDiscovery ".$idApp."\n";
+        }else{
+            $salida.="no existe WSDiscovery ".$idApp."\n";
+            $res2=$this->sql("INSERT INTO app_WSDiscovery(ID_APP) values ('".$idApp."')");
+        }
+        return $salida;
+    }
+
+    function anyadirServiciosWSDiscovery($idAppWSDiscovery, $atr){
+        $salida="";
+        foreach ($atr as $serviceName => $serviceAtr) {
+            $res=$this->sql("SELECT * FROM service_WSDiscovery WHERE ID_APP_WSDiscovery = '".$idAppWSDiscovery."' AND XAddrs = '".$serviceName."'");
+            if(count($res)>0){
+                $salida.="SERVICIO WSDiscovery ".$serviceName." ya añadido\n";
+                $consulta2="UPDATE service_WSDiscovery SET EPR = '".$serviceAtr["EPR"]."', InstanceId  = '".$serviceAtr["InstanceId"]."',
+                MessageNumber = '".$serviceAtr["MessageNumber"]."', MetadataVersion = '".$serviceAtr["MetadataVersion"]."', XAddrs = '".$serviceAtr["XAddrs"]."'
+                WHERE ID_APP_WSDiscovery = '".$idAppWSDiscovery."' AND XAddrs= '".$serviceName."'";
+                $salida.=$consulta2;
+                $res2=$this->sql($consulta2);
+            }else{
+                $salida.= "SERVICIO WSDiscovery ".$serviceName." no añadido\n";
+                $consulta2="INSERT INTO service_WSDiscovery (ID_APP_WSDiscovery, EPR, InstanceId, MessageNumber, MetadataVersion, XAddrs) values
+                (".$idAppWSDiscovery.",'".$serviceAtr["EPR"]."','".$serviceAtr["InstanceId"]."','".$serviceAtr["MessageNumber"]."',
+                '".$serviceAtr["MetadataVersion"]."','".$serviceAtr["XAddrs"]."')";
+                $salida.=$consulta2;
+                $res2=$this->sql($consulta2);
+
+            }
+            $idServicio=$this->sql("SELECT * FROM service_WSDiscovery WHERE ID_APP_WSDiscovery = '".$idAppWSDiscovery."' AND XAddrs= '".$serviceName."'");
+            $salida.=$this->anyadirScopesWSDiscovery($idServicio[0]["ID"],$serviceAtr["Scopes"]);
+            $salida.=$this->anyadirTypesWSDiscovery($idServicio[0]["ID"],$serviceAtr["Types"]);
+            $salida.=$this->anyadirVulnerabilidadesWSDiscovery($idServicio[0]["ID"],$serviceAtr["vulnerabilities"]);
+        }
+        return $salida;
+    }
+
+    function anyadirScopesWSDiscovery($idServicioWSDiscovery, $scopes){
+        $salida="";
+        $resDel=$this->sql("DELETE FROM scope_WSDiscovery WHERE ID_SERVICE = '".$idServicioWSDiscovery."'");
+        foreach ($scopes as $scopeKey => $scopeValue){
+            $salida.="Scope WSDiscovery ".$scopeKey."\n";
+            $res=$this->sql("INSERT INTO scope_WSDiscovery(ID_SERVICE, MatchBy, QuotedValue, Value) values ('".$idServicioWSDiscovery."','".$scopeValue["MatchBy"]."', '".$scopeValue["QuotedValue"]."', '".$scopeValue["Value"]."')");
+        }
+        return $salida;
+    }
+
+    function anyadirTypesWSDiscovery($idServicioWSDiscovery, $types){
+        $salida="";
+        $resDel=$this->sql("DELETE FROM type_WSDiscovery WHERE ID_SERVICE = '".$idServicioWSDiscovery."'");
+        foreach ($types as $typeKey => $typeValue){
+            $salida.="Type WSDiscovery ".$typeKey."\n";
+            $res=$this->sql("INSERT INTO type_WSDiscovery(ID_SERVICE, TypeName) values ('".$idServicioWSDiscovery."','".$typeValue."')");
+        }
+        return $salida;
+    }
+    function anyadirVulnerabilidadesWSDiscovery($idServicio, $vulnerabilities){
+        $salida="";
+        if($vulnerabilities["resultsPerPage"]==0) {
+            $salida .= "No hay vulnerabilidades WS-Discovery\n";
+            $res = $this->sql("DELETE FROM vulnerability_WSDiscovery WHERE ID_SERVICE= '" . $idServicio . "'");
+        }else{
+            $salida.="hay ".$vulnerabilities["resultsPerPage"]." vulnerabilidades\n";
+            $res=$this->sql("DELETE FROM vulnerability_WSDiscovery WHERE ID_SERVICE= '".$idServicio."'");
+            foreach($vulnerabilities["result"]["CVE_Items"] as $number => $vul){
+                $salida.="vulnerabilidad ".$number."\n";
+                $impactv2=$vul["impact"]["baseMetricV2"];
+                $impactv3=$vul["impact"]["baseMetricV3"];
+                $consulta="INSERT INTO vulnerability_WSDiscovery (ID_SERVICE, PublishDate, LastModifiedDate, Description, Lang,bmv2severity,bmv2explitabilityScore,
+	            bmv2impactScore,bmv2acInsufInfo,bmv2obtainAllPrivilege,	bmv2obtainUserPrivilege,bmv2obtainOtherPrivilege,bmv2userInteractionRequired,bmv2accessVector,
+                bmv2accessComplexity,bmv2authentication,bmv2confidentialityImpact,bmv2integrityImpact,bmv2availabilityImpact,bmv2baseScore,
+                bmv3exploitabilityScore,bmv3impactScore,bmv3attackVector,bmv3attackComplexity,bmv3privilegesRequired,bmv3userInteraction,bmv3scope,bmv3confidentialImpact,
+                bmv3integrityImpact,bmv3availabilityImpact,bmv3baseScore,bmv3baseSeverity) values
+                ('".$idServicio."','".str_replace("Z","",str_replace("T",":",$vul["publishedDate"]))."','".str_replace("Z","",str_replace("T",":",$vul["lastModifiedDate"]))."','".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."',
+                '".$vul["cve"]["description"]["description_data"][0]["lang"]."','".$impactv2["severity"]."','".$this->compVacio($impactv2["exploitabilityScore"])."',
+                '".$this->compVacio($impactv2["impactScore"])."',b'".$impactv2["acInsufInfo"]."',b'".$impactv2["obtainAllPrivilege"]."',b'".$impactv2["obtainUserPrivilege"]."',b'".$impactv2["obtainOtherPrivilege"]."',b'".$impactv2["userInteractionRequired"]."',
+                '".$impactv2["cvssV2"]["accessVector"]."','".$impactv2["cvssV2"]["accessComplexity"]."','".$impactv2["cvssV2"]["authentication"]."','".$impactv2["cvssV2"]["confidentialityImpact"]."',
+                '".$impactv2["cvssV2"]["integrityImpact"]."','".$impactv2["cvssV2"]["availabilityImpact"]."','".$this->compVacio($impactv2["cvssV2"]["baseScore"])."',
+                '".$this->compVacio($impactv3["exploitabilityScore"])."','".$this->compVacio($impactv3["impactScore"])."','".$impactv3["cvssV3"]["attackVector"]."','".$impactv3["cvssV3"]["attackComplexity"]."',
+                '".$impactv3["cvssV3"]["privilegesRequired"]."','".$impactv3["cvssV3"]["userInteraction"]."','".$impactv3["cvssV3"]["scope"]."','".$impactv3["cvssV3"]["confidentialityImpact"]."',
+                '".$impactv3["cvssV3"]["integrityImpact"]."','".$impactv3["cvssV3"]["availabilityImpact"]."','".$this->compVacio($impactv3["cvssV3"]["baseScore"])."','".$impactv3["cvssV3"]["baseSeverity"]."')";
+                $res2=$this->sql($consulta);
+                $salida.=$res2."\n";
+                //este if es por si hay algún fallo en la consulta
+                if($res2==""){
+                    $salida.=$consulta."\n";
+                }
+            }
+        }
         return $salida;
     }
     function anyadirAppmDNS($idApp, $atr){
@@ -124,12 +236,11 @@ class accesoSql {
     }
     function anyadirPropertiesmDNS($idServiciomDNS, $properties){
         $salida="";
-        $salida.="holass";
         $resDel=$this->sql("DELETE FROM property_mDNS WHERE ID_SERVICE_MDNS = '".$idServiciomDNS."'");
-        $res=$this->sql("INSERT INTO property_mdns(ID_SERVICE_MDNS, Llave, Valor) values ('".$idServiciomDNS."','hola', 'adios')");
+        //$res=$this->sql("INSERT INTO property_mDNS(ID_SERVICE_MDNS, Llave, Valor) values ('".$idServiciomDNS."','hola', 'adios')");
         foreach ($properties as $propertyKey => $propertyValue){
             $salida.="Property mDNS ".$propertyKey."\n";
-            $res=$this->sql("INSERT INTO property_mdns(ID_SERVICE_MDNS, Llave, Valor) values ('".$idServiciomDNS."','".$propertyKey."', '".$propertyValue."')");
+            $res=$this->sql("INSERT INTO property_mDNS(ID_SERVICE_MDNS, Llave, Valor) values ('".$idServiciomDNS."','".$propertyKey."', '".$propertyValue."')");
         }
         return $salida;
     }
@@ -317,10 +428,13 @@ class accesoSql {
             $salida.="<td>".$value["IP"]."</td><td>".$value["Port"]."</td>";
             $resUPnP=$this->sql("SELECT * FROM app_UPnP WHERE ID_APP = '".$value["ID"]."'");
             $resmDNS=$this->sql("SELECT * FROM app_mDNS WHERE ID_APP = '".$value["ID"]."'");
+            $resWSDiscovery=$this->sql("SELECT * FROM app_WSDiscovery WHERE ID_APP = '".$value["ID"]."'");
             if($resUPnP){
                 $salida.="<td>UPnP</td>";
             }else if($resmDNS){
                 $salida.="<td>mDNS</td>";
+            }else if($resWSDiscovery){
+                $salida.="<td>WS-Discovery</td>";
             }
             $salida.="</tr>";
             $contador++;
@@ -331,6 +445,7 @@ class accesoSql {
     function mostrarApp($ID){
         $resUPnP=$this->sql("SELECT * FROM app_UPnP WHERE ID_APP= '".$ID."'");
         $resmDNS=$this->sql("SELECT * FROM app_mDNS WHERE ID_APP= '".$ID."'");
+        $resWSDiscovery=$this->sql("SELECT * FROM app_WSDiscovery WHERE ID_APP = '".$ID."'");
         $salida="";
         if($resUPnP){
             $resApp=$this->sql("SELECT * FROM service_UPnP WHERE ID_APP= '".$resUPnP[0]["ID"]."'");
@@ -374,6 +489,27 @@ class accesoSql {
                 <td>" . $value["Priority"] . "</td>
                 <td>" . $value["Server"] . "</td>
                 <td>" . $value["InterfaceIndex"] . "</td>
+            </tr>";
+            }
+            $salida .= "</table>";
+        }else if($resWSDiscovery){
+            $resApp = $this->sql("SELECT * FROM service_WSDiscovery WHERE ID_APP_WSDiscovery= '" . $resWSDiscovery[0]["ID"] . "'");
+            $salida .= "<h1>Service WS-Discovery:</h1>
+                <table><tr>
+                <th>XAddrs</th>
+                <th>EPR</th>
+                <th>InstanceId</th>
+                <th>MessageNumber</th>
+                <th>MetadataVersion</th>
+            </tr>";
+            foreach ($resApp as $key => $value) {
+
+                $salida .= "<tr>
+                <td>" . $value["XAddrs"] . "</td>
+                <td>" . $value["EPR"] . "</td>
+                <td>" . $value["InstanceId"] . "</td>
+                <td>" . $value["MessageNumber"] . "</td>
+                <td>" . $value["MetadataVersion"] . "</td>
             </tr>";
             }
             $salida .= "</table>";
