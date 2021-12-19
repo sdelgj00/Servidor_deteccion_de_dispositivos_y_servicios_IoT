@@ -39,9 +39,131 @@ class accesoSql {
             return false;
         }
     }
-    function anyadirBase($a){
+	
+    function anyadirInfoDispositivo($ip,$atr){
         $salida="";
-        if($a["UPnP"]){
+        $salida.=$ip."\n";
+
+        //Esta linea es para poner todos los dispositivos como no accesibles
+        
+        $uptime=0;
+        if($atr["uptime"]["seconds"]){
+            $uptime=$atr["uptime"]["seconds"];
+        }
+        //Si no existe el dispositivo, lo creamos
+	    //Si existe, lo actualizamos
+        if($this->existeDispositivo($ip)){
+            $consulta="UPDATE dispositivo SET IP='".$ip."', HostName='".$atr["hostnames"][0]["name"]."', Type='".$atr["hostnames"][0]["type"]."', Mac='".$atr["addresses"]["mac"]."', Vendor='".$atr["vendor"][$atr["addresses"]["mac"]]."', Uptime='".$uptime."', State='up' WHERE IP = '".$ip."'";
+	        $res=$this->sql($consulta);
+	        $salida.=$consulta."\n";
+            $salida.="existe ".$ip."\n";
+        }else{
+            $salida.="no existe ".$ip."\n";
+            $consulta="INSERT INTO dispositivo(IP, HostName, Type, Mac, Vendor, Uptime, State) VALUES ('".$ip."', '".$atr["hostnames"][0]["name"]."','".$atr["hostnames"][0]["type"]."','".$atr["addresses"]["mac"]."','".$atr["vendor"][$atr["addresses"]["mac"]]."','".$uptime."','up')";
+            $res=$this->sql($consulta);
+            $salida.=$consulta;
+            $salida.="creado\n";
+        }
+        //$salida.=$this->anyadirPort($ip,$atr);
+        $salida.=$this->anyadirHostScript($ip,$atr);
+        //$salida.=$this->anyadirOsScript($ip,$atr);
+        return $salida;
+    }
+
+    function anyadirOsScript($ip,$atr){
+        $salida="";
+        $res=$this->sql("DELETE FROM os_script WHERE IP = '".$ip."'");
+        $salida.="Borrado contenido os script\n";
+        foreach ($atr["osmatch"] as $k => $v){
+            $res=$this->sql("INSER INTO os_script(IP,Name,Accuracy,Line) values ('".$ip."',
+            '".$ip."','".$v["name"]."','".$v["accuracy"]."','".$v["line"]."')");
+            $datosOsScript=$this->sql("SELECT * FROM os_script WHERE IP='".$ip."'");
+            foreach ($v["osclass"] as $k2 => $v2){
+                $res2=$this->sql("INSERT INTO os_class(ID_os_script,Type,Vendor,Osfamily,Osgen,Accuracy,Cpe) values (  
+                '".$datosOsScript[0]["ID"]."','".$v2["type"]."','".$v2["vendor"]."','".$v2["osfamily"]."','".$v2["osgen"]."',
+                '".$v2["accuracy"]."','".$v2["cpe"][0]."')");
+            }
+        }
+        return $salida;
+    }
+
+    function anyadirHostScript($ip,$atr){
+        $salida="";
+        $res=$this->sql("DELETE FROM host_script WHERE IP = '".$ip."'");
+        $salida.="Borrado contenido host script\n";
+        foreach ($atr["hostscript"] as $k => $v){
+            $consulta="INSERT INTO host_script(IP,Llave,Valor) values ('".$ip."',
+            '".$v["id"]."','".$v["output"]."')";
+            $res=$this->sql($consulta);
+            $salida.=$consulta."\n";
+        }
+        return $salida;
+    }
+    function anyadirPort($ip,$atr){
+        $salida="";
+        $res=$this->sql("DELETE FROM port WHERE IP = '".$ip."'");
+        $salida.="Borrado contenido\n";
+        $listaPuertos=array();
+        if($atr["tcp"]){
+            foreach ($atr["tcp"] as $port => $i){
+                $listaPuertos.array_push($port);
+                $res2=$this->sql("INSERT INTO port(IP,Port,Type,State,Name,Product,Version, ExtraInfor,Conf,Cpe)
+                values ('".$ip."','".$port."','tcp','".$i["state"]."','".$i["name"]."','".$i["product"]."','".$i["version"]."',
+                '".$i["extrainfo"]."','".$i["conf"]."','".$i["cpe"]."'");
+                $datosPort=$this->sql("SELECT * FROM port WHERE IP='".$ip."'");
+                foreach($i["script"] as $k => $v){
+                    $res3=$this->sql("INSERT INTO port_script(ID_Port,Llave,Valor) values 
+                    ('".$datosPort[0]["ID"]."','".$k."','".$v."')");
+                }
+            }
+        }
+        if($atr["udp"]){
+            foreach ($atr["udp"] as $port => $i){
+                $listaPuertos.array_push($port);
+                $res2=$this->sql("INSERT INTO port(IP,Port,Type,State,Name,Product,Version, ExtraInfor,Conf,Cpe)
+                values ('".$ip."','".$port."','udp','".$i["state"]."','".$i["name"]."','".$i["product"]."','".$i["version"]."',
+                '".$i["extrainfo"]."','".$i["conf"]."','".$i["cpe"]."'");
+                $datosPort=$this->sql("SELECT * FROM port WHERE IP='".$ip."'");
+                foreach($i["script"] as $k => $v){
+                    $res3=$this->sql("INSERT INTO port_script(ID_Port,Llave,Valor) values 
+                    ('".$datosPort[0]["ID"]."','".$k."','".$v."')");
+                }
+            }
+        }
+
+        if($atr["portused"]){
+            foreach ($atr["portused"] as $num => $i){
+                if(!$listaPuertos.array_key_exists($i["portid"])){
+                    $listaPuertos.array_push($i["portid"]);
+                    $res2=$this->sql("INSERT INTO port(IP, Port, Type, State) values
+                    ('".$ip."','".$i["portid"]."','".$i["proto"]."','".$i["state"]."')");
+                }
+            }
+        }
+        return $salida;
+    }
+
+    function anyadirBase($a,$clave){
+        $salida="";
+	    if($clave=="Nmap"){
+	    	$salida=$salida."Hay Nmap\n";
+	    	echo "holas\n".$a;
+	    	echo "\n".$a["Nmap"];
+	    	$resUpToDown=$this->sql("UPDATE dispositivo SET State='down'");
+            foreach ($a["Nmap"] as $ip => $atr){
+                $salida.=$this->anyadirInfoDispositivo($ip, $atr);
+                //Obtenemos el ID de la app añadida/modificada en el anyadirApp()
+               /* $salida.=$idApp[0]["IP"]." ".$idApp[0]["Port"];
+                $salida.=$this->anyadirAppUPnP($idApp[0]["ID"],$atr);
+
+                //Obtenemos el ID de la app añadida/modificada en el anyadirAppUPnP()
+                $idAppUPnP = $this->sql("SELECT * FROM app_UPnP WHERE ID_APP = '".$idApp[0]["ID"]."'");
+                $salida.=$this->anyadirServiciosUPnP($idAppUPnP[0]["ID"],$atr["services"]);*/
+
+
+            }
+	    }
+        if($clave=="UPnP"){
             $salida=$salida."Hay UPnP\n";
             foreach ($a["UPnP"] as $ipPuerto => $atr){
                 $partesIPPuerto=explode(":",$ipPuerto);
@@ -62,7 +184,7 @@ class accesoSql {
 
             }
         }
-        if($a["mDNS"]){
+        if($clave=="mDNS"){
             $salida=$salida."hay mDNS\n";
             foreach ($a["mDNS"] as $ipPuerto => $atr){
                 $partesIPPuerto=explode(":",$ipPuerto);
@@ -79,7 +201,7 @@ class accesoSql {
                 $salida.=$this->anyadirServiciosmDNS($idAppmDNS[0]["ID"],$atr);
             }
         }
-        if($a["WS-Discovery"]){
+        if($clave=="WS-Discovery"){
             $salida=$salida."hay WS-Discovery\n";
             foreach ($a["WS-Discovery"] as $ipPuerto => $atr){
                 $partesIPPuerto=explode(":",$ipPuerto);
