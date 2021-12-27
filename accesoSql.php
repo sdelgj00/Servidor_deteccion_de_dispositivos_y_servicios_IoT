@@ -64,9 +64,9 @@ class accesoSql {
             $salida.=$consulta;
             $salida.="creado\n";
         }
-        //$salida.=$this->anyadirPort($ip,$atr);
+        $salida.=$this->anyadirPort($ip,$atr);
         $salida.=$this->anyadirHostScript($ip,$atr);
-        //$salida.=$this->anyadirOsScript($ip,$atr);
+        $salida.=$this->anyadirOsScript($ip,$atr);
         return $salida;
     }
 
@@ -75,9 +75,11 @@ class accesoSql {
         $res=$this->sql("DELETE FROM os_script WHERE IP = '".$ip."'");
         $salida.="Borrado contenido os script\n";
         foreach ($atr["osmatch"] as $k => $v){
-            $res=$this->sql("INSER INTO os_script(IP,Name,Accuracy,Line) values ('".$ip."',
-            '".$ip."','".$v["name"]."','".$v["accuracy"]."','".$v["line"]."')");
-            $datosOsScript=$this->sql("SELECT * FROM os_script WHERE IP='".$ip."'");
+            $consulta="INSERT INTO os_script(IP,Name,Accuracy,Line) values ('".$ip."',
+            '".$v["name"]."','".$v["accuracy"]."','".$v["line"]."')";
+            $res=$this->sql($consulta);
+            $datosOsScript=$this->sql("SELECT * FROM os_script WHERE IP='".$ip."' AND Name= '".$v["name"]."' AND Accuracy= '".$v["accuracy"]."'");
+            $salida.=$consulta."\n";
             foreach ($v["osclass"] as $k2 => $v2){
                 $res2=$this->sql("INSERT INTO os_class(ID_os_script,Type,Vendor,Osfamily,Osgen,Accuracy,Cpe) values (  
                 '".$datosOsScript[0]["ID"]."','".$v2["type"]."','".$v2["vendor"]."','".$v2["osfamily"]."','".$v2["osgen"]."',
@@ -106,11 +108,14 @@ class accesoSql {
         $listaPuertos=array();
         if($atr["tcp"]){
             foreach ($atr["tcp"] as $port => $i){
-                $listaPuertos.array_push($port);
-                $res2=$this->sql("INSERT INTO port(IP,Port,Type,State,Name,Product,Version, ExtraInfor,Conf,Cpe)
+                array_push($listaPuertos,$port,"");
+                $salida.="puerto ".$port."\n";
+                $consulta="INSERT INTO port(IP,Port,Type,State,Name,Product,Version, ExtraInfor,Conf,Cpe)
                 values ('".$ip."','".$port."','tcp','".$i["state"]."','".$i["name"]."','".$i["product"]."','".$i["version"]."',
-                '".$i["extrainfo"]."','".$i["conf"]."','".$i["cpe"]."'");
-                $datosPort=$this->sql("SELECT * FROM port WHERE IP='".$ip."'");
+                '".$i["extrainfo"]."','".$i["conf"]."','".$i["cpe"]."')";
+                $res2=$this->sql($consulta);
+                $salida.=$consulta."\n";
+                $datosPort=$this->sql("SELECT * FROM port WHERE IP='".$ip."'AND Port='".$port."'");
                 foreach($i["script"] as $k => $v){
                     $res3=$this->sql("INSERT INTO port_script(ID_Port,Llave,Valor) values 
                     ('".$datosPort[0]["ID"]."','".$k."','".$v."')");
@@ -119,11 +124,12 @@ class accesoSql {
         }
         if($atr["udp"]){
             foreach ($atr["udp"] as $port => $i){
-                $listaPuertos.array_push($port);
+                array_push($listaPuertos,$port,"");
+                $salida.="puerto ".$port."\n";                
                 $res2=$this->sql("INSERT INTO port(IP,Port,Type,State,Name,Product,Version, ExtraInfor,Conf,Cpe)
                 values ('".$ip."','".$port."','udp','".$i["state"]."','".$i["name"]."','".$i["product"]."','".$i["version"]."',
-                '".$i["extrainfo"]."','".$i["conf"]."','".$i["cpe"]."'");
-                $datosPort=$this->sql("SELECT * FROM port WHERE IP='".$ip."'");
+                '".$i["extrainfo"]."','".$i["conf"]."','".$i["cpe"]."')");
+                $datosPort=$this->sql("SELECT * FROM port WHERE IP='".$ip."'AND Port='".$port."'");                
                 foreach($i["script"] as $k => $v){
                     $res3=$this->sql("INSERT INTO port_script(ID_Port,Llave,Valor) values 
                     ('".$datosPort[0]["ID"]."','".$k."','".$v."')");
@@ -133,8 +139,13 @@ class accesoSql {
 
         if($atr["portused"]){
             foreach ($atr["portused"] as $num => $i){
-                if(!$listaPuertos.array_key_exists($i["portid"])){
-                    $listaPuertos.array_push($i["portid"]);
+                $salida.="cucu\n";
+                $salida.=$i["portid"];
+                foreach($listaPuertos as $a =>$b){
+                    $salida.=$b."\n";
+                }
+                if(!in_array($i["portid"],$listaPuertos)){
+                    array_push($listaPuertos,$i["portid"],"");
                     $res2=$this->sql("INSERT INTO port(IP, Port, Type, State) values
                     ('".$ip."','".$i["portid"]."','".$i["proto"]."','".$i["state"]."')");
                 }
