@@ -16,7 +16,10 @@ function dispositivo(idApp){
     xmlhttp.open("GET", "controlador.php?APP="+idApp, true);
     xmlhttp.send();
 }
-
+function irDispositivo(){
+    console.log(IP);
+    document.location.href="Dispositivo.php?"+IP;
+}
 
 /*function dispositivo(idApp){
     console.log("xd");

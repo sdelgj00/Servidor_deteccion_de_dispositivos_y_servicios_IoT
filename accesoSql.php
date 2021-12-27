@@ -12,7 +12,7 @@ class accesoSql {
         }
     }
 
-    private function sql($sql) {
+    function sql($sql) {
 
         // Comprobamos que no hemos abierto ya la conexión
         if (!$this->conexion)  {
@@ -53,6 +53,7 @@ class accesoSql {
         //Si no existe el dispositivo, lo creamos
 	    //Si existe, lo actualizamos
         if($this->existeDispositivo($ip)){
+            $salida.="existe ".$ip."\n";
             $consulta="UPDATE dispositivo SET IP='".$ip."', HostName='".$atr["hostnames"][0]["name"]."', Type='".$atr["hostnames"][0]["type"]."', Mac='".$atr["addresses"]["mac"]."', Vendor='".$atr["vendor"][$atr["addresses"]["mac"]]."', Uptime='".$uptime."', State='up' WHERE IP = '".$ip."'";
 	        $res=$this->sql($consulta);
 	        $salida.=$consulta."\n";
@@ -117,8 +118,10 @@ class accesoSql {
                 $salida.=$consulta."\n";
                 $datosPort=$this->sql("SELECT * FROM port WHERE IP='".$ip."'AND Port='".$port."'");
                 foreach($i["script"] as $k => $v){
-                    $res3=$this->sql("INSERT INTO port_script(ID_Port,Llave,Valor) values 
-                    ('".$datosPort[0]["ID"]."','".$k."','".$v."')");
+                    $consulta2="INSERT INTO port_script(ID_Port,Llave,Valor) values 
+                    ('".$datosPort[0]["ID"]."','".$k."','".$v."')";
+                    $salida.="\n".$consulta2."\n";
+                    $res3=$this->sql($consulta2);
                 }
             }
         }
@@ -539,7 +542,7 @@ class accesoSql {
     }
     //Anyade el dispositivo que recibe a la base de datos
     function crearDispositivo($ip){
-        $res=$this->sql("INSERT INTO dispositivo(IP) VALUES ('".$ip."')");
+        $res=$this->sql("INSERT INTO dispositivo(IP, State) VALUES ('".$ip."', 'up')");
     }
     
 
