@@ -39,7 +39,16 @@ class accesoSql {
             return false;
         }
     }
-	
+
+	function existeDispositivoMac($mac){
+        $res=$this->sql("SELECT * FROM dispositivo WHERE Mac= '".$mac."'");
+        if(count($res)>0){
+            return true;
+        }else{
+            return false;
+        }
+    }
+
     function anyadirInfoDispositivo($ip,$atr){
         $salida="";
         $salida.=$ip."\n";
@@ -52,7 +61,13 @@ class accesoSql {
         }
         //Si no existe el dispositivo, lo creamos
 	    //Si existe, lo actualizamos
-        if($this->existeDispositivo($ip)){
+        if($this->existeDispositivoMac($atr["addresses"]["mac"])){//Actualizamos todos los dispositivos
+            $salida.="existe ".$atr["addresses"]["mac"]."\n";
+            $consulta="UPDATE dispositivo SET IP='".$ip."', HostName='".$atr["hostnames"][0]["name"]."', Type='".$atr["hostnames"][0]["type"]."', Mac='".$atr["addresses"]["mac"]."', Vendor='".$atr["vendor"][$atr["addresses"]["mac"]]."', Uptime='".$uptime."', State='up' WHERE Mac = '".$atr["addresses"]["mac"]."'";
+            $res=$this->sql($consulta);
+            $salida.=$consulta."\n";
+            $salida.="existe ".$atr["addresses"]["mac"]."\n";
+        }elseif($atr["addresses"]["mac"]==""){//Aquí se actualiza los dispositivos de detección, que a veces nmap no recoge la mac
             $salida.="existe ".$ip."\n";
             $consulta="UPDATE dispositivo SET IP='".$ip."', HostName='".$atr["hostnames"][0]["name"]."', Type='".$atr["hostnames"][0]["type"]."', Mac='".$atr["addresses"]["mac"]."', Vendor='".$atr["vendor"][$atr["addresses"]["mac"]]."', Uptime='".$uptime."', State='up' WHERE IP = '".$ip."'";
 	        $res=$this->sql($consulta);
@@ -542,114 +557,8 @@ class accesoSql {
     }
     //Anyade el dispositivo que recibe a la base de datos
     function crearDispositivo($ip){
-        $res=$this->sql("INSERT INTO dispositivo(IP, State) VALUES ('".$ip."', 'up')");
+
+        $res=$this->sql("INSERT INTO dispositivo(IP, HostName, Type, Mac, Vendor, Uptime, State) VALUES ('".$ip."', '','','','',0,'up')");
     }
-    
 
-
-
-
-    function mostrarApps(){
-        $res=$this->sql("SELECT * FROM app");
-        $salida="<table><tr>
-                <th>Nº</th>
-                <th>IP</th>
-                <th>PORT</th>
-                <th>PROTOCOL</th>
-
-            </tr>";
-        $contador=1;
-        foreach($res as $value){
-            $salida.="<tr><td><button onclick=dispositivo('".$value["ID"]."')>".$contador."</button></td>";
-            $salida.="<td>".$value["IP"]."</td><td>".$value["Port"]."</td>";
-            $resUPnP=$this->sql("SELECT * FROM app_UPnP WHERE ID_APP = '".$value["ID"]."'");
-            $resmDNS=$this->sql("SELECT * FROM app_mDNS WHERE ID_APP = '".$value["ID"]."'");
-            $resWSDiscovery=$this->sql("SELECT * FROM app_WSDiscovery WHERE ID_APP = '".$value["ID"]."'");
-            if($resUPnP){
-                $salida.="<td>UPnP</td>";
-            }else if($resmDNS){
-                $salida.="<td>mDNS</td>";
-            }else if($resWSDiscovery){
-                $salida.="<td>WS-Discovery</td>";
-            }
-            $salida.="</tr>";
-            $contador++;
-        }
-        $salida.="</table>";
-        return $salida;
-    }
-    function mostrarApp($ID){
-        $resUPnP=$this->sql("SELECT * FROM app_UPnP WHERE ID_APP= '".$ID."'");
-        $resmDNS=$this->sql("SELECT * FROM app_mDNS WHERE ID_APP= '".$ID."'");
-        $resWSDiscovery=$this->sql("SELECT * FROM app_WSDiscovery WHERE ID_APP = '".$ID."'");
-        $salida="";
-        if($resUPnP){
-            $resApp=$this->sql("SELECT * FROM service_UPnP WHERE ID_APP= '".$resUPnP[0]["ID"]."'");
-            $salida.="<h1>Service UPnP:</h1>
-                <table><tr>
-                <th>Name</th>
-                <th>ID_Name</th>
-                <th>SCPD</th>
-                <th>ControlUrl</th>
-                <th>EventUrl</th>
-                <th>BaseUrl</th>
-            </tr>";
-            foreach($resApp as $key => $value){
-                $salida.="<tr>
-                <td>".$value["Name"]."</td>
-                <td>".$value["ID_Name"]."</td>
-                <td>".$value["SCPD"]."</td>
-                <td>".$value["ControlUrl"]."</td>
-                <td>".$value["EventUrl"]."</td>
-                <td>".$value["BaseUrl"]."</td>
-            </tr>";
-            }
-            $salida.="</table>";
-        }else if($resmDNS) {
-            $resApp = $this->sql("SELECT * FROM service_mDNS WHERE ID_APP_mDNS= '" . $resmDNS[0]["ID"] . "'");
-            $salida .= "<h1>Service mDNS:</h1>
-                <table><tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Weight</th>
-                <th>Priority</th>
-                <th>Server</th>
-                <th>InterfaceIndex</th>
-            </tr>";
-            foreach ($resApp as $key => $value) {
-
-                $salida .= "<tr>
-                <td>" . $value["Name"] . "</td>
-                <td>" . $value["Type"] . "</td>
-                <td>" . $value["Weight"] . "</td>
-                <td>" . $value["Priority"] . "</td>
-                <td>" . $value["Server"] . "</td>
-                <td>" . $value["InterfaceIndex"] . "</td>
-            </tr>";
-            }
-            $salida .= "</table>";
-        }else if($resWSDiscovery){
-            $resApp = $this->sql("SELECT * FROM service_WSDiscovery WHERE ID_APP_WSDiscovery= '" . $resWSDiscovery[0]["ID"] . "'");
-            $salida .= "<h1>Service WS-Discovery:</h1>
-                <table><tr>
-                <th>XAddrs</th>
-                <th>EPR</th>
-                <th>InstanceId</th>
-                <th>MessageNumber</th>
-                <th>MetadataVersion</th>
-            </tr>";
-            foreach ($resApp as $key => $value) {
-
-                $salida .= "<tr>
-                <td>" . $value["XAddrs"] . "</td>
-                <td>" . $value["EPR"] . "</td>
-                <td>" . $value["InstanceId"] . "</td>
-                <td>" . $value["MessageNumber"] . "</td>
-                <td>" . $value["MetadataVersion"] . "</td>
-            </tr>";
-            }
-            $salida .= "</table>";
-        }
-        return $salida;
-    }
 }
