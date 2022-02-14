@@ -61,18 +61,26 @@ class accesoSql {
         }
         //Si no existe el dispositivo, lo creamos
 	    //Si existe, lo actualizamos
-        if($this->existeDispositivoMac($atr["addresses"]["mac"])){//Actualizamos todos los dispositivos
+        if($this->existeDispositivoMac($atr["addresses"]["mac"])&&$atr["addresses"]["mac"]!=""){//Actualizamos todos los dispositivos
             $salida.="existe ".$atr["addresses"]["mac"]."\n";
             $consulta="UPDATE dispositivo SET IP='".$ip."', HostName='".$atr["hostnames"][0]["name"]."', Type='".$atr["hostnames"][0]["type"]."', Mac='".$atr["addresses"]["mac"]."', Vendor='".$atr["vendor"][$atr["addresses"]["mac"]]."', Uptime='".$uptime."', State='up' WHERE Mac = '".$atr["addresses"]["mac"]."'";
             $res=$this->sql($consulta);
             $salida.=$consulta."\n";
             $salida.="existe ".$atr["addresses"]["mac"]."\n";
         }elseif($atr["addresses"]["mac"]==""){//Aquí se actualiza los dispositivos de detección, que a veces nmap no recoge la mac
-            $salida.="existe ".$ip."\n";
-            $consulta="UPDATE dispositivo SET IP='".$ip."', HostName='".$atr["hostnames"][0]["name"]."', Type='".$atr["hostnames"][0]["type"]."', Mac='".$atr["addresses"]["mac"]."', Vendor='".$atr["vendor"][$atr["addresses"]["mac"]]."', Uptime='".$uptime."', State='up' WHERE IP = '".$ip."'";
-	        $res=$this->sql($consulta);
-	        $salida.=$consulta."\n";
-            $salida.="existe ".$ip."\n";
+            if($this->existeDispositivo($ip)){
+                $salida .= "existe " . $ip . "\n";
+                $consulta = "UPDATE dispositivo SET IP='" . $ip . "', HostName='" . $atr["hostnames"][0]["name"] . "', Type='" . $atr["hostnames"][0]["type"] . "', Mac='" . $atr["addresses"]["mac"] . "', Vendor='" . $atr["vendor"][$atr["addresses"]["mac"]] . "', Uptime='" . $uptime . "', State='up' WHERE IP = '" . $ip . "'";
+                $res = $this->sql($consulta);
+                $salida .= $consulta . "\n";
+                $salida .= "existe " . $ip . "\n";
+            }else {
+                $salida .= "no existe mac vacia" . $ip . "\n";
+                $consulta="INSERT INTO dispositivo(IP, HostName, Type, Mac, Vendor, Uptime, State) VALUES ('".$ip."', '".$atr["hostnames"][0]["name"]."','".$atr["hostnames"][0]["type"]."','".$atr["addresses"]["mac"]."','".$atr["vendor"][$atr["addresses"]["mac"]]."','".$uptime."','up')";
+                $res = $this->sql($consulta);
+                $salida .= $consulta . "\n";
+                $salida .= "existe " . $ip . "\n";
+            }
         }else{
             $salida.="no existe ".$ip."\n";
             $consulta="INSERT INTO dispositivo(IP, HostName, Type, Mac, Vendor, Uptime, State) VALUES ('".$ip."', '".$atr["hostnames"][0]["name"]."','".$atr["hostnames"][0]["type"]."','".$atr["addresses"]["mac"]."','".$atr["vendor"][$atr["addresses"]["mac"]]."','".$uptime."','up')";
@@ -178,7 +186,7 @@ class accesoSql {
 	    	$salida=$salida."Hay Nmap\n";
 	    	echo "holas\n".$a;
 	    	echo "\n".$a["Nmap"];
-	    	$resUpToDown=$this->sql("UPDATE dispositivo SET State='down'");
+	    	$resUpToDown=$this->sql("UPDATE dispositivo SET State='down' WHERE Mac != ''");
             foreach ($a["Nmap"] as $ip => $atr){
                 $salida.=$this->anyadirInfoDispositivo($ip, $atr);
                 //Obtenemos el ID de la app añadida/modificada en el anyadirApp()
@@ -321,19 +329,9 @@ class accesoSql {
                 $salida.="vulnerabilidad ".$number."\n";
                 $impactv2=$vul["impact"]["baseMetricV2"];
                 $impactv3=$vul["impact"]["baseMetricV3"];
-                $consulta="INSERT INTO vulnerability_WSDiscovery (ID_SERVICE, PublishDate, LastModifiedDate, Description, Lang,bmv2severity,bmv2explitabilityScore,
-	            bmv2impactScore,bmv2acInsufInfo,bmv2obtainAllPrivilege,	bmv2obtainUserPrivilege,bmv2obtainOtherPrivilege,bmv2userInteractionRequired,bmv2accessVector,
-                bmv2accessComplexity,bmv2authentication,bmv2confidentialityImpact,bmv2integrityImpact,bmv2availabilityImpact,bmv2baseScore,
-                bmv3exploitabilityScore,bmv3impactScore,bmv3attackVector,bmv3attackComplexity,bmv3privilegesRequired,bmv3userInteraction,bmv3scope,bmv3confidentialImpact,
-                bmv3integrityImpact,bmv3availabilityImpact,bmv3baseScore,bmv3baseSeverity) values
-                ('".$idServicio."','".str_replace("Z","",str_replace("T",":",$vul["publishedDate"]))."','".str_replace("Z","",str_replace("T",":",$vul["lastModifiedDate"]))."','".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."',
-                '".$vul["cve"]["description"]["description_data"][0]["lang"]."','".$impactv2["severity"]."','".$this->compVacio($impactv2["exploitabilityScore"])."',
-                '".$this->compVacio($impactv2["impactScore"])."',b'".$impactv2["acInsufInfo"]."',b'".$impactv2["obtainAllPrivilege"]."',b'".$impactv2["obtainUserPrivilege"]."',b'".$impactv2["obtainOtherPrivilege"]."',b'".$impactv2["userInteractionRequired"]."',
-                '".$impactv2["cvssV2"]["accessVector"]."','".$impactv2["cvssV2"]["accessComplexity"]."','".$impactv2["cvssV2"]["authentication"]."','".$impactv2["cvssV2"]["confidentialityImpact"]."',
-                '".$impactv2["cvssV2"]["integrityImpact"]."','".$impactv2["cvssV2"]["availabilityImpact"]."','".$this->compVacio($impactv2["cvssV2"]["baseScore"])."',
-                '".$this->compVacio($impactv3["exploitabilityScore"])."','".$this->compVacio($impactv3["impactScore"])."','".$impactv3["cvssV3"]["attackVector"]."','".$impactv3["cvssV3"]["attackComplexity"]."',
-                '".$impactv3["cvssV3"]["privilegesRequired"]."','".$impactv3["cvssV3"]["userInteraction"]."','".$impactv3["cvssV3"]["scope"]."','".$impactv3["cvssV3"]["confidentialityImpact"]."',
-                '".$impactv3["cvssV3"]["integrityImpact"]."','".$impactv3["cvssV3"]["availabilityImpact"]."','".$this->compVacio($impactv3["cvssV3"]["baseScore"])."','".$impactv3["cvssV3"]["baseSeverity"]."')";
+                $consulta="INSERT INTO vulnerability_WSDiscovery (CVE, CWE, CVEurl, CWEurl, CWEdescr, ID_SERVICE, PublishDate, LastModifiedDate, Description, Lang) values                                                                                                                                                     
+                ('".$vul["cve"]["CVE_data_meta"]["ID"]."','".$vul["cve"]["problemtype"]["problemtype_data"][0]["description"][0]["value"]."','".$vul["CVE_url"]."','".$vul["CWE_url"]."','".$vul["CWE_desc"]."','".$idServicio."','".str_replace("Z","",str_replace("T",":",$vul["publishedDate"]))."','".str_replace("Z","",str_replace("T",":",$vul["lastModifiedDate"]))."',
+                '".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."','".$vul["cve"]["description"]["description_data"][0]["lang"]."')";
                 $res2=$this->sql($consulta);
                 $salida.=$res2."\n";
                 //este if es por si hay algún fallo en la consulta
@@ -407,20 +405,9 @@ class accesoSql {
                 $salida.="vulnerabilidad ".$number."\n";
                 $impactv2=$vul["impact"]["baseMetricV2"];
                 $impactv3=$vul["impact"]["baseMetricV3"];
-                $consulta="INSERT INTO vulnerability_mDNS (ID_SERVICE, PublishDate, LastModifiedDate, Description, Lang,bmv2severity,bmv2explitabilityScore,
-	            bmv2impactScore,bmv2acInsufInfo,bmv2obtainAllPrivilege,	bmv2obtainUserPrivilege,bmv2obtainOtherPrivilege,bmv2userInteractionRequired,bmv2accessVector,
-                bmv2accessComplexity,bmv2authentication,bmv2confidentialityImpact,bmv2integrityImpact,bmv2availabilityImpact,bmv2baseScore,
-                bmv3exploitabilityScore,bmv3impactScore,bmv3attackVector,bmv3attackComplexity,bmv3privilegesRequired,bmv3userInteraction,bmv3scope,bmv3confidentialImpact,
-                bmv3integrityImpact,bmv3availabilityImpact,bmv3baseScore,bmv3baseSeverity) values
-                ('".$idServicio."','".str_replace("Z","",str_replace("T",":",$vul["publishedDate"]))."','".str_replace("Z","",str_replace("T",":",$vul["lastModifiedDate"]))."','".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."',
-                '".$vul["cve"]["description"]["description_data"][0]["lang"]."','".$impactv2["severity"]."','".$this->compVacio($impactv2["exploitabilityScore"])."',
-                '".$this->compVacio($impactv2["impactScore"])."',b'".$impactv2["acInsufInfo"]."',b'".$impactv2["obtainAllPrivilege"]."',b'".$impactv2["obtainUserPrivilege"]."',b'".$impactv2["obtainOtherPrivilege"]."',b'".$impactv2["userInteractionRequired"]."',
-                '".$impactv2["cvssV2"]["accessVector"]."','".$impactv2["cvssV2"]["accessComplexity"]."','".$impactv2["cvssV2"]["authentication"]."','".$impactv2["cvssV2"]["confidentialityImpact"]."',
-                '".$impactv2["cvssV2"]["integrityImpact"]."','".$impactv2["cvssV2"]["availabilityImpact"]."','".$this->compVacio($impactv2["cvssV2"]["baseScore"])."',
-                '".$this->compVacio($impactv3["exploitabilityScore"])."','".$this->compVacio($impactv3["impactScore"])."','".$impactv3["cvssV3"]["attackVector"]."','".$impactv3["cvssV3"]["attackComplexity"]."',
-                '".$impactv3["cvssV3"]["privilegesRequired"]."','".$impactv3["cvssV3"]["userInteraction"]."','".$impactv3["cvssV3"]["scope"]."','".$impactv3["cvssV3"]["confidentialityImpact"]."',
-                '".$impactv3["cvssV3"]["integrityImpact"]."','".$impactv3["cvssV3"]["availabilityImpact"]."','".$this->compVacio($impactv3["cvssV3"]["baseScore"])."','".$impactv3["cvssV3"]["baseSeverity"]."')";
-                $res2=$this->sql($consulta);
+                $consulta="INSERT INTO vulnerability_mDNS (CVE, CWE, CVEurl, CWEurl, CWEdescr, ID_SERVICE, PublishDate, LastModifiedDate, Description, Lang) values                                                                                                                                                     
+                ('".$vul["cve"]["CVE_data_meta"]["ID"]."','".$vul["cve"]["problemtype"]["problemtype_data"][0]["description"][0]["value"]."','".$vul["CVE_url"]."','".$vul["CWE_url"]."','".$vul["CWE_desc"]."','".$idServicio."','".str_replace("Z","",str_replace("T",":",$vul["publishedDate"]))."','".str_replace("Z","",str_replace("T",":",$vul["lastModifiedDate"]))."',
+                '".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."','".$vul["cve"]["description"]["description_data"][0]["lang"]."')";               $res2=$this->sql($consulta);
                 $salida.=$res2."\n";
                 //este if es por si hay algún fallo en la consulta
                 if($res2==""){
@@ -484,19 +471,9 @@ class accesoSql {
                 $salida.="vulnerabilidad ".$number."\n";
                 $impactv2=$vul["impact"]["baseMetricV2"];
                 $impactv3=$vul["impact"]["baseMetricV3"];
-                $consulta="INSERT INTO vulnerability_UPnP (ID_SERVICE, PublishDate, LastModifiedDate, Description, Lang,bmv2severity,bmv2explitabilityScore,
-	            bmv2impactScore,bmv2acInsufInfo,bmv2obtainAllPrivilege,	bmv2obtainUserPrivilege,bmv2obtainOtherPrivilege,bmv2userInteractionRequired,bmv2accessVector,
-                bmv2accessComplexity,bmv2authentication,bmv2confidentialityImpact,bmv2integrityImpact,bmv2availabilityImpact,bmv2baseScore,
-                bmv3exploitabilityScore,bmv3impactScore,bmv3attackVector,bmv3attackComplexity,bmv3privilegesRequired,bmv3userInteraction,bmv3scope,bmv3confidentialImpact,
-                bmv3integrityImpact,bmv3availabilityImpact,bmv3baseScore,bmv3baseSeverity) values
-                ('".$idServicio."','".str_replace("Z","",str_replace("T",":",$vul["publishedDate"]))."','".str_replace("Z","",str_replace("T",":",$vul["lastModifiedDate"]))."','".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."',
-                '".$vul["cve"]["description"]["description_data"][0]["lang"]."','".$impactv2["severity"]."','".$this->compVacio($impactv2["exploitabilityScore"])."',
-                '".$this->compVacio($impactv2["impactScore"])."',b'".$impactv2["acInsufInfo"]."',b'".$impactv2["obtainAllPrivilege"]."',b'".$impactv2["obtainUserPrivilege"]."',b'".$impactv2["obtainOtherPrivilege"]."',b'".$impactv2["userInteractionRequired"]."',
-                '".$impactv2["cvssV2"]["accessVector"]."','".$impactv2["cvssV2"]["accessComplexity"]."','".$impactv2["cvssV2"]["authentication"]."','".$impactv2["cvssV2"]["confidentialityImpact"]."',
-                '".$impactv2["cvssV2"]["integrityImpact"]."','".$impactv2["cvssV2"]["availabilityImpact"]."','".$this->compVacio($impactv2["cvssV2"]["baseScore"])."',
-                '".$this->compVacio($impactv3["exploitabilityScore"])."','".$this->compVacio($impactv3["impactScore"])."','".$impactv3["cvssV3"]["attackVector"]."','".$impactv3["cvssV3"]["attackComplexity"]."',
-                '".$impactv3["cvssV3"]["privilegesRequired"]."','".$impactv3["cvssV3"]["userInteraction"]."','".$impactv3["cvssV3"]["scope"]."','".$impactv3["cvssV3"]["confidentialityImpact"]."',
-                '".$impactv3["cvssV3"]["integrityImpact"]."','".$impactv3["cvssV3"]["availabilityImpact"]."','".$this->compVacio($impactv3["cvssV3"]["baseScore"])."','".$impactv3["cvssV3"]["baseSeverity"]."')";
+                $consulta="INSERT INTO vulnerability_UPnP (CVE, CWE, CVEurl, CWEurl, CWEdescr, ID_SERVICE, PublishDate, LastModifiedDate, Description, Lang) values                                                                                                                                                     
+                ('".$vul["cve"]["CVE_data_meta"]["ID"]."','".$vul["cve"]["problemtype"]["problemtype_data"][0]["description"][0]["value"]."','".$vul["CVE_url"]."','".$vul["CWE_url"]."','".$vul["CWE_desc"]."','".$idServicio."','".str_replace("Z","",str_replace("T",":",$vul["publishedDate"]))."','".str_replace("Z","",str_replace("T",":",$vul["lastModifiedDate"]))."',
+                '".str_replace("'","`",$vul["cve"]["description"]["description_data"][0]["value"])."','".$vul["cve"]["description"]["description_data"][0]["lang"]."')";
                 $res2=$this->sql($consulta);
                 $salida.=$res2."\n";
                 //este if es por si hay algún fallo en la consulta

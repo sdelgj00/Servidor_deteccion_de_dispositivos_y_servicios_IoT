@@ -21,6 +21,13 @@ if($clave=="UPnP"||$clave=="mDNS"||$clave=="WS-Discovery"||$clave=="Nmap"){
 
     $r=$AccesoSql->anyadirBase($info,$clave);
 	echo $r;
+}else if($clave="All"){
+    foreach ($info as $k => $v){
+        echo $k."\n\n";
+        $r = $AccesoSql->anyadirBase($v, $k);
+        echo $r;
+
+    }
 }
 if($_GET["APP"]){
     $r=$AccesoSql->mostrarApp($_GET["APP"]);
