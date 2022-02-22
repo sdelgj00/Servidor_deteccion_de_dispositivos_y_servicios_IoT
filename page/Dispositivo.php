@@ -96,7 +96,7 @@ echo constant("NAV");
 
      <table class="text-center table-striped table-responsive-sm table-w contentTable">
      <tr class="bg-warning flex-column">
-			<th>ID App</th><th>ID App mDNS</th>
+			<th>ID App</th><th>ID App mDNS</th><th>Port</th>
 		</tr>
         <tbody  class='table-dark bg-dark flex-column '>
         <?php
@@ -105,7 +105,7 @@ echo constant("NAV");
             $existeAppMDNS=$accesosql->sql("SELECT * FROM app_mdns WHERE ID_APP ='".$i["ID"]."'");
             if(count($existeAppMDNS)>0){
                 echo "<tr onclick=irMDNS(".$existeAppMDNS[0]["ID"].",'".$_GET["ip"]."',".$i["Port"].")>
-                    <td>".$i["ID"]."</td><td>".$existeAppMDNS[0]["ID"]."</td>
+                    <td>".$i["ID"]."</td><td>".$existeAppMDNS[0]["ID"]."</td><td>".$i["Port"]."</td>
                 </tr>";
             }
         }
@@ -119,7 +119,7 @@ echo constant("NAV");
 
      <table class="text-center table-striped table-responsive-sm table-w contentTable">
      <tr class="bg-warning flex-column">
-			<th>ID app</th><th>ID app WS-Discovery</th>
+			<th>ID app</th><th>ID app WS-Discovery</th><th>Port</th>
 		</tr>
         <tbody  class='table-dark bg-dark flex-column '>
         <?php
@@ -136,7 +136,7 @@ echo constant("NAV");
                 
                 */
                 echo "<tr onclick=irWSDiscovery(".$existeAppWSDiscovery[0]["ID"].",'".$_GET["ip"]."',".$i["Port"].")>
-                    <td>".$i["ID"]."</td><td>".$existeAppWSDiscovery[0]["ID"]."</td>
+                    <td>".$i["ID"]."</td><td>".$existeAppWSDiscovery[0]["ID"]."</td><td>".$i["Port"]."</td>
                 </tr>";
             }
         }

@@ -21,15 +21,25 @@ tr:hover>td{
 .bordeBlanco{
   border-color: white;
 }
-.contentTable{
-  margin: auto ;
-}
+
 td{
-  padding: 2px 10px 2px 10px;
+  padding: 4px 10px 4px 10px;
 }
 .titulo{
   padding-left: 80px;
 }
 th{
-  padding: 2px 10px 2px 10px;
+  padding: 4px 10px 4px 10px;
+  font-size: larger;
+}
+table{
+  /*width: 80%;
+  margin-right: 10%;
+  margin-left: 10%;
+  overflow-x: scroll hidden;*/
+  display: block;
+  margin-left:10%;
+  margin-right:5%;
+  width: 80%;
+  overflow-x: auto;
 }
